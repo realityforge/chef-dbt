@@ -70,7 +70,7 @@ action :create do
   end
 
   template "#{base_dir}/config/database.yml" do
-    cookbook 'dbt2'
+    cookbook 'dbt'
     source "database.yml.erb"
     if node['platform'] != 'windows'
       owner new_resource.system_user if new_resource.system_user
