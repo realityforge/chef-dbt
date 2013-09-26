@@ -1,0 +1,26 @@
+devhost: &devhost
+  appname: dbt
+  username: <%= @username %>
+  password: <%= @password %>
+  host: <%= @host %>
+  port: <%= @port %>
+  force_drop: <%= @recreate %>
+  no_create: false
+
+production:
+  database: <%= @database_name %>
+  <<: *devhost
+
+import:
+  database: <%= @last_database_name %>
+  <<: *devhost
+
+<% @linked_databases.each_pair do |key, database_name| -%>
+<%= key %>_production:
+  database: <%= database_name %>
+  <<: *devhost
+
+<%= key %>_import:
+  database: <%= database_name %>
+  <<: *devhost
+<% end -%>
