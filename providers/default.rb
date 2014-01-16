@@ -126,11 +126,11 @@ action :create do
       cmd.run_command
       begin
         cmd.error!
-        version_from_match = /Database Version: (?<version>[^$]+)/.match(cmd.stdout)
+        version_from_match = /Database Version: (?<version>.+)/.match(cmd.stdout)
         dbjar_version = version_from_match.nil? ? nil : version_from_match[:version]
-        unless dbjar_version && major_version.to_s == dbjar_version.to_s
+        unless dbjar_version && major_version.to_s.eql?(dbjar_version.to_s)
           puts '*********************** WARNING ***********************'
-          puts "WARNING: Mismatch in Database Major Version.  Chef expects #{major_version}, DbJar contains #{dbjar_version}"
+          puts "WARNING: Mismatch in Database Major Version.  Chef expects [#{major_version.inspect}], DbJar contains [#{dbjar_version.inspect}]"
           puts '*********************** WARNING ***********************'
         end
         migrations_supported = /Migrations Supported: Yes/.match(cmd.stdout)
