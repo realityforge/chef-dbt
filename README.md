@@ -32,17 +32,17 @@
 
 ### Attribute Parameters
 
-- database_key: 
-- major_version: 
-- minor_version: 
+- database_key:
+- major_version:
+- minor_version:
 - last_database:  Defaults to <code>nil</code>.
 - import_on_create:  Defaults to <code>true</code>.
 - recreate_on_minor_version_delta:  Defaults to <code>false</code>.
-- package_url: 
-- admin_user: 
-- admin_password: 
-- host: 
-- port: 
+- package_url:
+- admin_user:
+- admin_password:
+- host:
+- port:
 - driver_key:  Defaults to <code>"sql_server"</code>.
 - artifact_key:  Defaults to <code>nil</code>.
 - prefix_dir:  Defaults to <code>nil</code>.
