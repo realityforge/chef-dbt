@@ -98,10 +98,10 @@ action :create do
 
   major_version = new_resource.major_version
   minor_version = new_resource.minor_version
+  enforce_version_match = new_resource.enforce_version_match
   import_on_create = new_resource.import_on_create
   recreate_on_minor_version_delta = new_resource.recreate_on_minor_version_delta
   extra_classpath = ["file://#{database_jar_location}"]
-  migrations_supported = false
 
   sqlshell_exec "Create or migrate database #{database_name}" do
     jdbc_url jdbc_url
@@ -110,6 +110,9 @@ action :create do
     jdbc_properties jdbc_properties
     command get_version_sql
     block do
+      migrations_supported = false
+      dbt_jar_version_match = true
+
       java_exe =
         if node['platform'] == 'windows'
           "\"#{node['java']['java_home']}\\bin\\java.exe\""
@@ -128,31 +131,50 @@ action :create do
         cmd.error!
         version_from_match = /Database Version: (?<version>.+)/.match(cmd.stdout)
         dbjar_version = version_from_match.nil? ? nil : version_from_match[:version]
-        unless dbjar_version && major_version.to_s.eql?(dbjar_version.to_s)
+        dbt_jar_version_match = dbjar_version && major_version.to_s.eql?(dbjar_version.to_s)
+        migrations_supported = !!/Migrations Supported: Yes/.match(cmd.stdout)
+        puts "Migration support within DbJar: #{migrations_supported}"
+        version_hash_match = /Database Schema Hash: (?<hash>.+)/.match(cmd.stdout)
+        unless version_hash_match.nil?
+          minor_version = version_hash_match[:hash]
+          puts "Database Minor Version has been overriden to align with database schema hash: #{minor_version}"
+        end
+      rescue Exception => e
+        puts '*********************** WARNING ***********************'
+        puts 'WARNING: Unable to determine support for migrations or Database Major Version'
+        puts e.to_s
+        puts '*********************** WARNING ***********************'
+      end
+      unless dbt_jar_version_match
+        if enforce_version_match
+          raise "Database Major Version is expected to be [#{major_version.inspect}] but DbJar contains [#{dbjar_version.inspect}]"
+        else
           puts '*********************** WARNING ***********************'
           puts "WARNING: Mismatch in Database Major Version.  Chef expects [#{major_version.inspect}], DbJar contains [#{dbjar_version.inspect}]"
           puts '*********************** WARNING ***********************'
         end
-        migrations_supported = /Migrations Supported: Yes/.match(cmd.stdout)
-        puts "Migration support within DbJar: #{migrations_supported}"
-      rescue Exception => e
-        puts '*********************** WARNING ***********************'
-        puts 'WARNING: Unable to determine support for migrations or Database Major Version'
-        puts '*********************** WARNING ***********************'
       end
 
-      major_version_differs = @sql_results.size == 0 || major_version.to_s != @sql_results[0]['Dbt_MajorVersion']
-      minor_version_differs = @sql_results.size == 0 || minor_version != @sql_results[0]['Dbt_MinorVersion']
+      db_major_version = @sql_results.size == 0 ? 'Unset' : @sql_results[0]['Dbt_MajorVersion']
+      db_minor_version = @sql_results.size == 0 ? 'Unset' : @sql_results[0]['Dbt_MinorVersion']
+      major_version_differs = major_version.to_s != db_major_version
+      minor_version_differs = minor_version.to_s != db_minor_version
 
       action = nil
 
       if major_version_differs || (recreate_on_minor_version_delta && minor_version_differs)
+        if major_version_differs
+          puts "Major version differs [#{db_major_version} vs #{major_version.to_s}], recreating db."
+        else
+          puts "Minor version differs [#{db_minor_version} vs #{minor_version.to_s}], recreating db."
+        end
         if import_on_create
           action = 'create_by_import'
         else
           action = 'create'
         end
       elsif minor_version_differs && migrations_supported
+        puts "Minor version differs [#{db_minor_version} vs #{minor_version.to_s}], performing migration."
         action = 'migrate'
       end
 

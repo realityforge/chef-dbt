@@ -20,6 +20,8 @@ attribute :database_key, :kind_of => String, :name_attribute => true
 
 attribute :major_version, :kind_of => Integer, :required => true
 attribute :minor_version, :kind_of => String, :required => true
+# Enforce match beween nominated major version and version from dbt jar
+attribute :enforce_version_match, :kind_of => [TrueClass, FalseClass], :required => false
 
 attribute :last_database, :kind_of => [String, NilClass], :default => nil
 attribute :import_on_create, :kind_of => [TrueClass, FalseClass], :default => true
