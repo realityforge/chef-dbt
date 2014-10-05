@@ -16,7 +16,7 @@
 
 use_inline_resources
 
-def get_version_sql
+def get_version_sql(version_prefix)
   if new_resource.driver_key == 'sql_server'
     <<-SQL
         IF EXISTS (SELECT * FROM sys.databases WHERE name = '#{new_resource.database_name}')
@@ -28,8 +28,8 @@ BEGIN
       E2.value AS Dbt_MinorVersion
     FROM
       sys.extended_properties AS E1, sys.extended_properties AS E2
-    WHERE E1.class_desc = ''DATABASE'' AND E1.name = ''Dbt_MajorVersion'' AND
-          E2.class_desc = ''DATABASE'' AND E2.name = ''Dbt_MinorVersion''
+    WHERE E1.class_desc = ''DATABASE'' AND E1.name = ''Dbt_#{version_prefix}MajorVersion'' AND
+          E2.class_desc = ''DATABASE'' AND E2.name = ''Dbt_#{version_prefix}MinorVersion''
   ')
 END
 ELSE
@@ -45,7 +45,7 @@ end
 action :create do
 
   database_name = new_resource.database_name
-  artifact_key = new_resource.artifact_key || new_resource.database_key
+  artifact_key = new_resource.artifact_key || new_resource.database_name
 
   archive = archive artifact_key do
     url new_resource.package_url
@@ -82,7 +82,7 @@ action :create do
               :host => new_resource.host,
               :port => new_resource.port,
               :database_name => database_name,
-              :last_database_name => new_resource.last_database_name,
+              :last_database_name => new_resource.last_database,
               :recreate => new_resource.recreate_on_minor_version_delta,
               :linked_databases => new_resource.linked_databases)
   end
@@ -102,13 +102,15 @@ action :create do
   import_on_create = new_resource.import_on_create
   recreate_on_minor_version_delta = new_resource.recreate_on_minor_version_delta
   extra_classpath = ["file://#{database_jar_location}"]
+  module_group = new_resource.module_group
+  version_prefix = new_resource.module_group.nil? ? '' : "#{artifact_key}_#{new_resource.module_group}_"
 
   sqlshell_exec "Create or migrate database #{database_name}" do
     jdbc_url jdbc_url
     jdbc_driver jdbc_driver
     extra_classpath extra_classpath
     jdbc_properties jdbc_properties
-    command get_version_sql
+    command get_version_sql(version_prefix)
     block do
       migrations_supported = false
       dbt_jar_version_match = true
@@ -157,12 +159,31 @@ action :create do
 
       db_major_version = @sql_results.size == 0 ? 'Unset' : @sql_results[0]['Dbt_MajorVersion']
       db_minor_version = @sql_results.size == 0 ? 'Unset' : @sql_results[0]['Dbt_MinorVersion']
+
+      puts "Versions in database - Major: #{db_major_version} Minor: #{db_minor_version}"
+
       major_version_differs = major_version.to_s != db_major_version
       minor_version_differs = minor_version.to_s != db_minor_version
 
       action = nil
 
-      if major_version_differs || (recreate_on_minor_version_delta && minor_version_differs)
+      create_version_properties = true
+
+      if !module_group.nil?
+        create_version_properties = db_minor_version == 'Unset'
+        if major_version_differs || (recreate_on_minor_version_delta && minor_version_differs)
+          if major_version_differs
+            puts "Major version differs [#{db_major_version} vs #{major_version.to_s}], recreating module group #{module_group}."
+          else
+            puts "Minor version differs [#{db_minor_version} vs #{minor_version.to_s}], recreating module group #{module_group}."
+          end
+          if create_version_properties
+            action = "up:#{module_group}"
+          else
+            action = "down:#{module_group} up:#{module_group}"
+          end
+        end
+      elsif major_version_differs || (recreate_on_minor_version_delta && minor_version_differs)
         if major_version_differs
           puts "Major version differs [#{db_major_version} vs #{major_version.to_s}], recreating db."
         else
@@ -176,6 +197,7 @@ action :create do
       elsif minor_version_differs && migrations_supported
         puts "Minor version differs [#{db_minor_version} vs #{minor_version.to_s}], performing migration."
         action = 'migrate'
+        create_version_properties = false
       end
 
       if action
@@ -187,13 +209,13 @@ action :create do
         cmd.run_command
         cmd.error!
 
-        if 'migrate' == action
+        if !create_version_properties
           sqlshell_exec "Update minor version on database #{database_name}" do
             jdbc_url jdbc_url
             jdbc_driver jdbc_driver
             extra_classpath extra_classpath
             jdbc_properties jdbc_properties
-            command "EXEC [#{database_name}].sys.sp_updateextendedproperty @name = N'Dbt_MinorVersion', @value = N'#{minor_version}'"
+            command "EXEC [#{database_name}].sys.sp_updateextendedproperty @name = N'Dbt_#{version_prefix}MinorVersion', @value = N'#{minor_version}'"
           end
         else
           sqlshell_exec "Set major version on database #{database_name}" do
@@ -201,7 +223,7 @@ action :create do
             jdbc_driver jdbc_driver
             extra_classpath extra_classpath
             jdbc_properties jdbc_properties
-            command "EXEC [#{database_name}].sys.sp_addextendedproperty @name = N'Dbt_MajorVersion', @value = N'#{major_version}'"
+            command "EXEC [#{database_name}].sys.sp_addextendedproperty @name = N'Dbt_#{version_prefix}MajorVersion', @value = N'#{major_version}'"
           end
 
           sqlshell_exec "Set minor version on database #{database_name}" do
@@ -209,7 +231,7 @@ action :create do
             jdbc_driver jdbc_driver
             extra_classpath extra_classpath
             jdbc_properties jdbc_properties
-            command "EXEC [#{database_name}].sys.sp_addextendedproperty @name = N'Dbt_MinorVersion', @value = N'#{minor_version}'"
+            command "EXEC [#{database_name}].sys.sp_addextendedproperty @name = N'Dbt_#{version_prefix}MinorVersion', @value = N'#{minor_version}'"
           end
         end
       else
@@ -218,7 +240,7 @@ action :create do
           jdbc_driver jdbc_driver
           extra_classpath extra_classpath
           jdbc_properties jdbc_properties
-          command "EXEC [#{database_name}].sys.sp_updateextendedproperty @name = N'Dbt_MinorVersion', @value = N'#{minor_version}'"
+          command "EXEC [#{database_name}].sys.sp_updateextendedproperty @name = N'Dbt_#{version_prefix}MinorVersion', @value = N'#{minor_version}'"
         end
       end
     end

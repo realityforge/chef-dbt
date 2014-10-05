@@ -16,16 +16,17 @@
 
 actions :create
 
-attribute :database_key, :kind_of => String, :name_attribute => true
+attribute :database_name, :kind_of => String, :name_attribute => true
+attribute :module_group, :kind_of => [String, NilClass], :default => nil
 
 attribute :major_version, :kind_of => Integer, :required => true
 attribute :minor_version, :kind_of => String, :required => true
-# Enforce match beween nominated major version and version from dbt jar
+# Enforce match between nominated major version and version from dbt jar
 attribute :enforce_version_match, :kind_of => [TrueClass, FalseClass], :required => false
+attribute :recreate_on_minor_version_delta, :kind_of => [TrueClass, FalseClass], :default => false
 
 attribute :last_database, :kind_of => [String, NilClass], :default => nil
 attribute :import_on_create, :kind_of => [TrueClass, FalseClass], :default => true
-attribute :recreate_on_minor_version_delta, :kind_of => [TrueClass, FalseClass], :default => false
 
 attribute :package_url, :kind_of => String, :required => true
 
@@ -45,14 +46,6 @@ attribute :system_group, :kind_of => String, :default => nil
 attribute :linked_databases, :kind_of => Hash, :default => {}
 
 default_action :create
-
-def database_name
-  "#{database_key}_#{major_version}"
-end
-
-def last_database_name
-  last_database || "#{database_key}_#{major_version - 1}"
-end
 
 def version
   "#{major_version}.#{minor_version}"
