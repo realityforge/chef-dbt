@@ -84,6 +84,8 @@ action :create do
               :database_name => database_name,
               :last_database_name => new_resource.last_database,
               :recreate => new_resource.recreate_on_minor_version_delta,
+              :shrink_on_import => new_resource.shrink_on_import,
+              :reindex_on_import => new_resource.reindex_on_import,
               :linked_databases => new_resource.linked_databases)
   end
 
@@ -100,9 +102,11 @@ action :create do
   minor_version = new_resource.minor_version
   enforce_version_match = new_resource.enforce_version_match
   import_on_create = new_resource.import_on_create
+  import_spec = new_resource.import_spec
   recreate_on_minor_version_delta = new_resource.recreate_on_minor_version_delta
   extra_classpath = ["file://#{database_jar_location}"]
   module_group = new_resource.module_group
+  java_memory = new_resource.java_memory
   version_prefix = new_resource.module_group.nil? ? '' : "#{artifact_key}_#{new_resource.module_group}_"
 
   sqlshell_exec "Create or migrate database #{database_name}" do
@@ -190,7 +194,7 @@ action :create do
           puts "Minor version differs [#{db_minor_version} vs #{minor_version.to_s}], recreating db."
         end
         if import_on_create
-          action = 'create_by_import'
+          action = "create_by_import#{import_spec.nil? ? '' : ":#{import_spec}"}"
         else
           action = 'create'
         end
@@ -201,7 +205,7 @@ action :create do
       end
 
       if action
-        command = "#{java_exe} -Xmx100M -jar #{database_jar_location} --environment production --config-file #{base_dir}/config/database.yml #{action}"
+        command = "#{java_exe} -Xmx#{java_memory}M -jar #{database_jar_location} --environment production --config-file #{base_dir}/config/database.yml #{action}"
         puts command
         cmd = Mixlib::ShellOut.new(command)
         cmd.timeout = 7200
