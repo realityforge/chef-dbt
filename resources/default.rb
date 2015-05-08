@@ -27,6 +27,10 @@ attribute :recreate_on_minor_version_delta, :kind_of => [TrueClass, FalseClass],
 
 attribute :last_database, :kind_of => [String, NilClass], :default => nil
 attribute :import_on_create, :kind_of => [TrueClass, FalseClass], :default => true
+attribute :reindex_on_import, :kind_of => [TrueClass, FalseClass], :default => true
+attribute :shrink_on_import, :kind_of => [TrueClass, FalseClass], :default => true
+
+attribute :import_spec, :kind_of => [String, NilClass], :default => nil
 
 attribute :package_url, :kind_of => String, :required => true
 
@@ -44,6 +48,8 @@ attribute :system_user, :kind_of => String, :default => nil
 attribute :system_group, :kind_of => String, :default => nil
 
 attribute :linked_databases, :kind_of => Hash, :default => {}
+
+attribute :java_memory, :kind_of => Integer, :default => 100
 
 default_action :create
 

@@ -37,6 +37,9 @@
 - minor_version:
 - last_database:  Defaults to <code>nil</code>.
 - import_on_create:  Defaults to <code>true</code>.
+- reindex_on_import:  Defaults to <code>true</code>.
+- shrink_on_import:  Defaults to <code>true</code>.
+- import_spec:  Defaults to <code>nil</code>.
 - recreate_on_minor_version_delta:  Defaults to <code>false</code>.
 - package_url:
 - admin_user:
@@ -49,6 +52,7 @@
 - system_user:  Defaults to <code>nil</code>.
 - system_group:  Defaults to <code>nil</code>.
 - linked_databases:  Defaults to <code>{}</code>.
+- java_memory:  In megabytes. Defaults to <code>100</code>.
 
 # License and Maintainer
 

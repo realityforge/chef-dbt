@@ -6,6 +6,8 @@ devhost: &devhost
   port: <%= @port %>
   force_drop: <%= @recreate %>
   no_create: false
+  reindex_on_import: <%= @reindex_on_import %>
+  shrink_on_import: <%= @shrink_on_import %>
 
 production:
   database: <%= @database_name %>
