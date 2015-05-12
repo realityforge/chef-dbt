@@ -56,3 +56,7 @@ default_action :create
 def version
   "#{major_version}.#{minor_version}"
 end
+
+def no_create?
+  !module_group.nil?
+end
