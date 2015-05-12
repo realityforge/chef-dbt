@@ -83,6 +83,7 @@ action :create do
               :port => new_resource.port,
               :database_name => database_name,
               :last_database_name => new_resource.last_database,
+              :no_create => new_resource.no_create?,
               :recreate => new_resource.recreate_on_minor_version_delta,
               :shrink_on_import => new_resource.shrink_on_import,
               :reindex_on_import => new_resource.reindex_on_import,

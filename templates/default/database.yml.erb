@@ -5,7 +5,7 @@ devhost: &devhost
   host: <%= @host %>
   port: <%= @port %>
   force_drop: <%= @recreate %>
-  no_create: false
+  no_create: <%= @no_create %>
   reindex_on_import: <%= @reindex_on_import %>
   shrink_on_import: <%= @shrink_on_import %>
 
