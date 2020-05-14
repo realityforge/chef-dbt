@@ -1,6 +1,6 @@
 # Description
 
-[![Build Status](https://api.travis-ci.com/realityforge/chef-dbt.svg?branch=master)](http://travis-ci.org/realityforge/chef-dbt)
+[![Build Status](https://api.travis-ci.com/realityforge/chef-dbt.svg?branch=master)](http://travis-ci.com/realityforge/chef-dbt)
 
 # Requirements
 
